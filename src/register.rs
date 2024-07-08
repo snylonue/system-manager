@@ -17,12 +17,16 @@ struct NixBuildOutput {
     outputs: HashMap<String, String>,
 }
 
-pub fn register(store_path: &StorePath, nix_options: &NixOptions) -> Result<()> {
+pub fn register(
+    store_path: &StorePath,
+    nix_options: &NixOptions,
+    nix_args: &[String],
+) -> Result<()> {
     let profile_dir = Path::new(PROFILE_DIR);
     let profile_name = Path::new(PROFILE_NAME);
 
     log::info!("Creating new generation from {store_path}");
-    let status = install_nix_profile(store_path, profile_dir, profile_name, nix_options)?;
+    let status = install_nix_profile(store_path, profile_dir, profile_name, nix_options, nix_args)?;
     if !status.success() {
         anyhow::bail!("Error installing the nix profile, see above for details.");
     }
@@ -39,6 +43,7 @@ fn install_nix_profile(
     profile_dir: &Path,
     profile_name: &Path,
     nix_options: &NixOptions,
+    nix_args: &[String],
 ) -> Result<process::ExitStatus> {
     DirBuilder::new()
         .recursive(true)
@@ -49,6 +54,9 @@ fn install_nix_profile(
         .arg(profile_dir.join(profile_name))
         .arg("--set")
         .arg(&store_path.store_path);
+    nix_args.iter().for_each(|arg| {
+        cmd.arg(arg);
+    });
     nix_options.options.iter().for_each(|option| {
         cmd.arg("--option").arg(&option.0).arg(&option.1);
     });
@@ -66,13 +74,13 @@ fn create_gcroot(gcroot_path: &str, profile_path: &Path) -> Result<()> {
     create_store_link(&store_path, Path::new(gcroot_path))
 }
 
-pub fn build(flake_uri: &str, nix_options: &NixOptions) -> Result<StorePath> {
-    let full_flake_uri = find_flake_attr(flake_uri, nix_options)?;
+pub fn build(flake_uri: &str, nix_options: &NixOptions, nix_args: &[String]) -> Result<StorePath> {
+    let full_flake_uri: String = find_flake_attr(flake_uri, nix_options)?;
 
     log::info!("Building new system-manager generation...");
     log::info!("Running nix build...");
     let store_path =
-        run_nix_build(full_flake_uri.as_ref(), nix_options).and_then(get_store_path)?;
+        run_nix_build(full_flake_uri.as_ref(), nix_options, nix_args).and_then(get_store_path)?;
     log::info!("Built system-manager profile {store_path}");
     Ok(store_path)
 }
@@ -152,9 +160,16 @@ fn parse_nix_build_output(output: String) -> Result<StorePath> {
     anyhow::bail!("Multiple build results were returned, we cannot handle that yet.")
 }
 
-fn run_nix_build(flake_uri: &str, nix_options: &NixOptions) -> Result<process::Output> {
+fn run_nix_build(
+    flake_uri: &str,
+    nix_options: &NixOptions,
+    nix_args: &[String],
+) -> Result<process::Output> {
     let mut cmd = nix_cmd(nix_options);
     cmd.arg("build").arg(flake_uri).arg("--json");
+    nix_args.iter().for_each(|arg| {
+        cmd.arg(arg);
+    });
 
     log::debug!("Running nix command: {cmd:?}");
 
