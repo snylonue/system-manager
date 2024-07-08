@@ -198,13 +198,7 @@ fn go(args: Args) -> Result<()> {
         } => {
             let store_path = do_build(&flake_uri, &nix_options, &nix_args)?;
             copy_closure(&store_path, &target_host)?;
-            do_register(
-                &store_path,
-                &target_host,
-                use_remote_sudo,
-                &nix_options,
-                &nix_args,
-            )?;
+            do_register(&store_path, &target_host, use_remote_sudo, &nix_options)?;
             activate(&store_path, ephemeral, &target_host, use_remote_sudo)
         }
         Action::Activate {
@@ -258,13 +252,7 @@ fn register(
         } => {
             let store_path = do_build(&flake_uri, nix_options, nix_args)?;
             copy_closure(&store_path, target_host)?;
-            do_register(
-                &store_path,
-                target_host,
-                use_remote_sudo,
-                nix_options,
-                nix_args,
-            )?;
+            do_register(&store_path, target_host, use_remote_sudo, nix_options)?;
             Ok(store_path)
         }
         StoreOrFlakeArgs {
@@ -278,13 +266,7 @@ fn register(
                 },
         } => {
             copy_closure(&store_path, target_host)?;
-            do_register(
-                &store_path,
-                target_host,
-                use_remote_sudo,
-                nix_options,
-                nix_args,
-            )?;
+            do_register(&store_path, target_host, use_remote_sudo, nix_options)?;
             Ok(store_path)
         }
         _ => {
@@ -298,7 +280,6 @@ fn do_register(
     target_host: &Option<String>,
     use_remote_sudo: bool,
     nix_options: &NixOptions,
-    nix_args: &[String],
 ) -> Result<()> {
     if let Some(target_host) = target_host {
         let status = invoke_remote_script(
@@ -319,7 +300,7 @@ fn do_register(
         }
     } else {
         check_root()?;
-        system_manager::register::register(store_path, nix_options, nix_args)
+        system_manager::register::register(store_path, nix_options)
     }
 }
 
@@ -364,13 +345,7 @@ fn prepopulate(
         } => {
             let store_path = do_build(&flake_uri, nix_options, nix_args)?;
             copy_closure(&store_path, target_host)?;
-            do_register(
-                &store_path,
-                target_host,
-                use_remote_sudo,
-                nix_options,
-                nix_args,
-            )?;
+            do_register(&store_path, target_host, use_remote_sudo, nix_options)?;
             do_prepopulate(&store_path, ephemeral, target_host, use_remote_sudo)?;
             Ok(store_path)
         }
@@ -383,13 +358,7 @@ fn prepopulate(
         } => {
             let store_path = StorePath::try_from(store_path_or_active_profile(maybe_store_path))?;
             copy_closure(&store_path, target_host)?;
-            do_register(
-                &store_path,
-                target_host,
-                use_remote_sudo,
-                nix_options,
-                nix_args,
-            )?;
+            do_register(&store_path, target_host, use_remote_sudo, nix_options)?;
             do_prepopulate(&store_path, ephemeral, target_host, use_remote_sudo)?;
             Ok(store_path)
         }

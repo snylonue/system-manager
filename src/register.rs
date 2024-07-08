@@ -17,16 +17,12 @@ struct NixBuildOutput {
     outputs: HashMap<String, String>,
 }
 
-pub fn register(
-    store_path: &StorePath,
-    nix_options: &NixOptions,
-    nix_args: &[String],
-) -> Result<()> {
+pub fn register(store_path: &StorePath, nix_options: &NixOptions) -> Result<()> {
     let profile_dir = Path::new(PROFILE_DIR);
     let profile_name = Path::new(PROFILE_NAME);
 
     log::info!("Creating new generation from {store_path}");
-    let status = install_nix_profile(store_path, profile_dir, profile_name, nix_options, nix_args)?;
+    let status = install_nix_profile(store_path, profile_dir, profile_name, nix_options)?;
     if !status.success() {
         anyhow::bail!("Error installing the nix profile, see above for details.");
     }
@@ -43,7 +39,6 @@ fn install_nix_profile(
     profile_dir: &Path,
     profile_name: &Path,
     nix_options: &NixOptions,
-    nix_args: &[String],
 ) -> Result<process::ExitStatus> {
     DirBuilder::new()
         .recursive(true)
@@ -54,9 +49,6 @@ fn install_nix_profile(
         .arg(profile_dir.join(profile_name))
         .arg("--set")
         .arg(&store_path.store_path);
-    nix_args.iter().for_each(|arg| {
-        cmd.arg(arg);
-    });
     nix_options.options.iter().for_each(|option| {
         cmd.arg("--option").arg(&option.0).arg(&option.1);
     });
